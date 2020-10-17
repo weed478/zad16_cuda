@@ -16,7 +16,7 @@ __global__ void Kernels::findMax(uint64_t *out, const uint16_t *in, uint64_t siz
     const int stride = numReduceThreads;
 
     unsigned int t = threadIdx.x;
-    uint64_t i = (uint64_t)blockIdx.x * (uint64_t)blockDim.x + (uint64_t)threadIdx.x;
+    uint64_t i = (uint64_t)blockIdx.x * (uint64_t)blockDim.x * 2 + (uint64_t)threadIdx.x;
 
     if (i < size)
     {

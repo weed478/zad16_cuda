@@ -6,7 +6,7 @@
 namespace Kernels
 {
     const int numGenThreads = 128;
-    const int numReduceThreads = 256;
+    const int numReduceThreads = 1024;
 
     __global__
     void genFnKn(uint16_t *out, uint64_t size, uint64_t i0);

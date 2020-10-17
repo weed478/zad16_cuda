@@ -14,9 +14,17 @@ uint64_t findMaximum(const uint64_t *data, uint64_t size);
 
 uint64_t generateAndFindMaximum(uint16_t *d_fn, uint64_t *d_buf, uint64_t *h_out, uint64_t size, uint64_t i0);
 
+// max in 2^31 * 1024: 2156795915823, 1419
+
 int main()
 {
-    const uint64_t size = 1ULL << 31u;
+    size_t freeMem = 0;
+    cudaMemGetInfo(&freeMem, nullptr);
+
+    freeMem -= freeMem / 10;
+    cout << "Using " << freeMem / (1u << 20u) << " MB" << endl;
+
+    const uint64_t size = freeMem / 2;
 
     uint16_t maxN = 1;
     uint64_t maxArg = 2;
@@ -24,14 +32,13 @@ int main()
     uint16_t *d_fn;
     cudaMalloc(&d_fn, size * sizeof(*d_fn));
 
-    // oh my god this is so wrong
-    uint64_t blocks = (size + Kernels::numReduceThreads - 1) / Kernels::numReduceThreads;
+    uint64_t blocks = ((size + 2ull - 1ull) / 2ull + Kernels::numReduceThreads - 1ull) / Kernels::numReduceThreads;
     uint64_t *d_buf;
     cudaMalloc(&d_buf, blocks * sizeof(*d_buf));
 
     auto *h_out = new uint64_t[blocks];
 
-    for (int i = 0; i < 32; i++)
+    for (int i = 0; i < 2; i++)
     {
         auto newMax = generateAndFindMaximum(d_fn, d_buf, h_out, size, i * size);
         uint16_t newMaxN = newMax & 0xffffU;
@@ -55,7 +62,7 @@ int main()
 void generateFunction(uint16_t *d_out, uint64_t size, uint64_t i0)
 {
     int threads = Kernels::numGenThreads;
-    uint64_t blocks = (size + threads - 1) / threads;
+    uint64_t blocks = (size + threads - 1ull) / threads;
     Kernels::genFnKn<<<blocks, threads>>>(d_out, size, i0);
 }
 
@@ -77,14 +84,8 @@ uint64_t generateAndFindMaximum(uint16_t *d_fn, uint64_t *d_buf, uint64_t *h_out
     cout << "Generating " << size << " values from " << i0 << endl;
     generateFunction(d_fn, size, i0);
 
-//    cudaDeviceSynchronize();
-    cout << "Looking for maximum" << endl;
-
-    // oh my god this is so wrong
-    uint64_t blocks = (size + Kernels::numReduceThreads - 1) / Kernels::numReduceThreads;
-
+    uint64_t blocks = ((size + 2ull - 1ull) / 2ull + Kernels::numReduceThreads - 1ull) / Kernels::numReduceThreads;
     Kernels::findMax<<<blocks, Kernels::numReduceThreads>>>(d_buf, d_fn, size);
-
     cudaMemcpy(h_out, d_buf, blocks * sizeof(*d_buf), cudaMemcpyDeviceToHost);
 
     auto max = findMaximum(h_out, blocks);
